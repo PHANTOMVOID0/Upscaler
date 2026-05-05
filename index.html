@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Restoration & Upscale Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="grain"></div>
+
+  <header>
+    <div class="logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">Restorer</span>
+    </div>
+    <div class="header-badge">4K · HDR · Cinematic</div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Image Restoration<br /><em>&amp; Upscale</em></h1>
+      <p class="hero-sub">AI-powered 4K restoration. Preserve identity, enhance fidelity, cinematic output.</p>
+    </section>
+
+    <div class="tool-layout">
+
+      <!-- LEFT: Upload + Preview -->
+      <div class="panel panel-left">
+        <div class="panel-title">Input</div>
+
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" accept="image/*" id="fileInput" />
+          <div class="upload-inner" id="uploadInner">
+            <div class="upload-icon">↑</div>
+            <div class="upload-main">Drop image or click to upload</div>
+            <div class="upload-sub">JPG, PNG, WEBP — any resolution</div>
+          </div>
+        </div>
+
+        <div class="preview-grid" id="previewGrid">
+          <div class="preview-box">
+            <img id="origImg" src="" alt="Original" />
+            <span class="preview-label">Original</span>
+          </div>
+          <div class="preview-box preview-result">
+            <div class="result-placeholder" id="resultPlaceholder">
+              <div class="placeholder-icon">◈</div>
+              <div>4K output<br/>appears here</div>
+            </div>
+            <span class="preview-label">4K Restored</span>
+          </div>
+        </div>
+
+        <div class="file-info" id="fileInfo"></div>
+      </div>
+
+      <!-- RIGHT: Controls -->
+      <div class="panel panel-right">
+        <div class="panel-title">Configuration</div>
+
+        <!-- Resolution -->
+        <div class="control-group">
+          <div class="control-label">Target resolution</div>
+          <div class="res-pills">
+            <button class="res-pill active" onclick="setRes(this,'4K')">4K</button>
+            <button class="res-pill" onclick="setRes(this,'2K')">2K</button>
+            <button class="res-pill" onclick="setRes(this,'1080p')">1080p</button>
+          </div>
+        </div>
+
+        <!-- Sliders -->
+        <div class="control-group">
+          <div class="control-label">Steps <span class="control-hint">— inference quality</span></div>
+          <div class="slider-wrap">
+            <input type="range" min="10" max="50" step="1" value="30" id="stepsSlider" oninput="syncSlider('steps')" />
+            <span class="slider-val" id="stepsDisplay">30</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">CFG Scale <span class="control-hint">— prompt adherence</span></div>
+          <div class="slider-wrap">
+            <input type="range" min="1" max="15" step="0.5" value="6.5" id="cfgSlider" oninput="syncSlider('cfg')" />
+            <span class="slider-val" id="cfgDisplay">6.5</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">Denoising <span class="control-hint">— creativity vs. preservation</span></div>
+          <div class="slider-wrap">
+            <input type="range" min="0.1" max="0.9" step="0.05" value="0.45" id="denoiseSlider" oninput="syncSlider('denoise')" />
+            <span class="slider-val" id="denoiseDisplay">0.45</span>
+          </div>
+        </div>
+
+        <!-- Upscaler -->
+        <div class="control-group">
+          <div class="control-label">Upscaler model</div>
+          <select class="select-input" id="upscalerSelect">
+            <option value="4x_NMKD_Siax_200k" selected>4x NMKD Siax 200k</option>
+            <option value="4x_UltraSharp">4x UltraSharp</option>
+            <option value="ESRGAN_4x">ESRGAN 4x</option>
+            <option value="RealESRGAN_x4plus">RealESRGAN x4+</option>
+            <option value="SwinIR_4x">SwinIR 4x</option>
+          </select>
+        </div>
+
+        <!-- Prompts -->
+        <div class="control-group">
+          <div class="prompt-header">
+            <div class="control-label">Positive prompt</div>
+            <button class="copy-btn" onclick="copyText('pos')">Copy</button>
+          </div>
+          <div class="prompt-box" id="posPrompt" contenteditable="true">Restore and enhance the provided image. Preserve original identity, facial structure, proportions and composition. High-fidelity photo restoration, ultra-realistic, natural skin texture, accurate details, professional photographic look. 4K output, sharp but natural focus, modern cinematic lighting, subtle volumetric lighting, professional color grading, depth of field, HDR. Shot on Arri Alexa, raw photo aesthetic, masterpiece.</div>
+        </div>
+
+        <div class="control-group">
+          <div class="prompt-header">
+            <div class="control-label">Negative prompt</div>
+            <button class="copy-btn" onclick="copyText('neg')">Copy</button>
+          </div>
+          <div class="prompt-box prompt-neg" id="negPrompt" contenteditable="true">Creative reinterpretation, style change, identity alteration, face reshaping, exaggerated features, cartoonish, painting, illustration, over-sharpening, plastic skin, blur, noise, film grain, jpeg artifacts, distortion, bad anatomy, overexposed, underexposed, washed out colors.</div>
+        </div>
+
+        <!-- Enhancement tags -->
+        <div class="control-group">
+          <div class="control-label">Active enhancements</div>
+          <div class="tag-row">
+            <span class="tag on">Identity preservation</span>
+            <span class="tag on">Cinematic lighting</span>
+            <span class="tag on">HDR</span>
+            <span class="tag on">Depth of field</span>
+            <span class="tag on">Arri Alexa</span>
+            <span class="tag on">Color grading</span>
+            <span class="tag">Face restore</span>
+            <span class="tag">Deblur</span>
+            <span class="tag">Grain removal</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+          <button class="btn-primary" onclick="exportJSON()">Export config JSON</button>
+          <button class="btn-secondary" onclick="copyAllConfig()">Copy config</button>
+        </div>
+
+        <div class="toast" id="toast"></div>
+      </div>
+    </div>
+
+    <!-- How to use this config -->
+    <section class="guide">
+      <div class="guide-title">How to use this config</div>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <div class="guide-num">01</div>
+          <div class="guide-name">AUTOMATIC1111</div>
+          <div class="guide-desc">Go to img2img tab → enable Hi-Res Fix → paste prompts → set denoising & steps → select upscaler from the dropdown.</div>
+        </div>
+        <div class="guide-card">
+          <div class="guide-num">02</div>
+          <div class="guide-name">ComfyUI</div>
+          <div class="guide-desc">Use an img2img + Ultimate SD Upscale node. Wire KSampler with these cfg/steps/denoising values and set the upscaler node to NMKD Siax.</div>
+        </div>
+        <div class="guide-card">
+          <div class="guide-num">03</div>
+          <div class="guide-name">Replicate API</div>
+          <div class="guide-desc">Use the nightmareai/real-esrgan model. POST your image + scale factor. Export the JSON from this tool and map the fields to their API params.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Image Restoration Tool</span>
+    <span>·</span>
+    <span>Powered by Stable Diffusion</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
